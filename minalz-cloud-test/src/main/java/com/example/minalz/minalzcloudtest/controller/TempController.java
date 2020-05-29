@@ -1,10 +1,9 @@
 package com.example.minalz.minalzcloudtest.controller;
 
-import com.ssc.core.swagger2.ResponseResult;
-import com.ssc.util.LogUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.hssf.usermodel.*;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.Cell;
@@ -39,12 +38,12 @@ public class TempController {
      * 注意：此卡只是应客户对数据需求临时开发的方案，不发布测试机。
      * @return
      */
-    @ApiOperation(value = "客户到货量处理-excel处理", notes = "文件路径必须填写", response = ResponseResult.class)
+    @ApiOperation(value = "客户到货量处理-excel处理", notes = "文件路径必须填写")
     @PostMapping(value = "/excel",produces = "application/json; utf-8")
     public String dealExcel(@ApiParam(required = true,  value = "文件路径") @RequestParam(value = "filePath") String filePath,
                             HttpServletRequest request, HttpServletResponse response){
         try {
-            LogUtil.getLogger().info("文件路径 -->" + filePath);
+            System.out.println("文件路径 -->" + filePath);
             // 获取文件对象
             if(filePath == null){
                 return "文件路径必须填写";
@@ -64,7 +63,7 @@ public class TempController {
         return "生成的文件路径是-->" + newFilePath + fileName;
     }
 
-    public static void readExcel(String filePath, HttpServletResponse response) throws Exception {
+    public static void readExcel(String filePath,HttpServletResponse response) throws Exception {
 
         InputStream is = new FileInputStream(new File(filePath));
         Workbook hssfWorkbook = null;
@@ -101,7 +100,7 @@ public class TempController {
                 if(rowNum == 0){
                     // 该sheet有多少列
                     int columnNumber = hssfRow.getPhysicalNumberOfCells();
-                    LogUtil.getLogger().info("excel总列数 -->" + columnNumber);
+                    System.out.println("excel总列数 -->" + columnNumber);
                     // 标题行
                     for (int i = 0; i < columnNumber; i++) {
                         String cellValue = getStringValueFromCell(hssfRow.getCell(i));
@@ -213,37 +212,55 @@ public class TempController {
                     int week = dayOrCaseValue / 7; // 一共几周
                     int over = dayOrCaseValue % 7; // 余几天
                     // 期末 = 到日doi计算得到
-                    // 期初 + 到货 = 预计 + 期末
-                    int a = 1;
-                    while(a <= week){
-                        // 这是计算整周的
-                        if(i1 + a <= titleList1.size() - 1){
-                            String newDayStr = titleList1.get(i1 + a);
-                            String newExpect = keyItemMap2.get(customer + "," + material).get(newDayStr);
+                    // 这是计算不足一周的
+                    if(week == 0 && over > 0){
+                        // 这里是计算余数
+                        if(i1 + 1 > titleList1.size() - 1){
+                            continue;
+                        }
+                        String newDayStr = titleList1.get(i1 + 1);
+                        String newExpect = keyItemMap2.get(customer + "," + material).get(newDayStr);
+                        //                            Integer newExpecteValue = Integer.valueOf(newExpect);
+                        BigDecimal newExpecteValue = new BigDecimal(newExpect);
+                        //                            Integer newExpecteValue2 = newExpecteValue * over / 7;
+                        // 四舍五入
+                        BigDecimal newExpecteValue2 = newExpecteValue.multiply(new BigDecimal(over)).divide(new BigDecimal(7), 1, BigDecimal.ROUND_HALF_UP);
+                        //                            endValue += newExpecteValue2;
+                        endValue = endValue.add(newExpecteValue2);
+
+                    }else if(week > 0){
+                        // 期初 + 到货 = 预计 + 期末
+                        int a = 1;
+                        while(a <= week){
+                            // 这是计算整周的
+                            if(i1 + a <= titleList1.size() - 1){
+                                String newDayStr = titleList1.get(i1 + a);
+                                String newExpect = keyItemMap2.get(customer + "," + material).get(newDayStr);
 //                            Integer newExpecteValue = Integer.valueOf(newExpect);
-                            BigDecimal newExpecteValue = new BigDecimal(newExpect);
+                                BigDecimal newExpecteValue = new BigDecimal(newExpect);
 //                            endValue += newExpecteValue;
-                            endValue = endValue.add(newExpecteValue);
-                        }
-
-                        if( a == week && over > 0){
-                            // 这里是计算余数
-                            if(i1 + a + 1 > titleList1.size() - 1){
-                                a++;
-                                continue;
+                                endValue = endValue.add(newExpecteValue);
                             }
-                            String newDayStr = titleList1.get(i1 + a + 1);
-                            String newExpect = keyItemMap2.get(customer + "," + material).get(newDayStr);
-//                            Integer newExpecteValue = Integer.valueOf(newExpect);
-                            BigDecimal newExpecteValue = new BigDecimal(newExpect);
-//                            Integer newExpecteValue2 = newExpecteValue * over / 7;
-                            // 四舍五入
-                            BigDecimal newExpecteValue2 = newExpecteValue.multiply(new BigDecimal(over)).divide(new BigDecimal(7), 1, BigDecimal.ROUND_HALF_UP);
-//                            endValue += newExpecteValue2;
-                            endValue = endValue.add(newExpecteValue2);
 
+                            if( a == week && over > 0){
+                                // 这里是计算余数
+                                if(i1 + a + 1 > titleList1.size() - 1){
+                                    a++;
+                                    continue;
+                                }
+                                String newDayStr = titleList1.get(i1 + a + 1);
+                                String newExpect = keyItemMap2.get(customer + "," + material).get(newDayStr);
+//                            Integer newExpecteValue = Integer.valueOf(newExpect);
+                                BigDecimal newExpecteValue = new BigDecimal(newExpect);
+//                            Integer newExpecteValue2 = newExpecteValue * over / 7;
+                                // 四舍五入
+                                BigDecimal newExpecteValue2 = newExpecteValue.multiply(new BigDecimal(over)).divide(new BigDecimal(7), 1, BigDecimal.ROUND_HALF_UP);
+//                            endValue += newExpecteValue2;
+                                endValue = endValue.add(newExpecteValue2);
+
+                            }
+                            a++;
                         }
-                        a++;
                     }
 
                 }else{
@@ -299,10 +316,10 @@ public class TempController {
         // 数据封装完成 开始导出
         OutputStream out = null;
         try {
-            String fileName = "到货处理数据.xlsx";
+            String fileName = "到货处理数据NEW.xlsx";
             String newFilePath = filePath.substring(0, filePath.lastIndexOf("\\") + 1);
             out = new FileOutputStream(newFilePath + fileName);
-            com.ssc.plan.controller.ExcelUtils eeu = new com.ssc.plan.controller.ExcelUtils();
+            ExcelUtils eeu = new ExcelUtils();
             XSSFWorkbook workbook = new XSSFWorkbook();
             eeu.exportExcel(workbook, 0, "最大DOI数据", titleList1, maxList);
             eeu.exportExcel(workbook, 1, "安全DOI数据", titleList1, safeList);
@@ -311,7 +328,7 @@ public class TempController {
             workbook.write(out);
             out.flush();
             workbook.close();
-            LogUtil.getLogger().info("导出结束,文件路径在-->"+newFilePath + fileName);
+            System.out.println("导出结束,文件路径在-->"+newFilePath + fileName);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -726,7 +743,7 @@ class ExcelUtils {
             String fileName = "到货处理数据-test3.xlsx";
             String newFilePath = filePath.substring(0, filePath.lastIndexOf("\\") + 1);
             out = new FileOutputStream(newFilePath + fileName);
-            com.ssc.plan.controller.ExcelUtils eeu = new com.ssc.plan.controller.ExcelUtils();
+            ExcelUtils eeu = new ExcelUtils();
             XSSFWorkbook workbook = new XSSFWorkbook();
             eeu.exportExcel(workbook, 0, "最大DOI数据", titleList1, maxList);
             eeu.exportExcel(workbook, 1, "安全DOI数据", titleList1, safeList);
@@ -735,7 +752,7 @@ class ExcelUtils {
             workbook.write(out);
             out.flush();
             workbook.close();
-            LogUtil.getLogger().info("导出结束,文件路径在-->"+newFilePath + fileName);
+            System.out.println("导出结束,文件路径在-->"+newFilePath + fileName);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
