@@ -1,0 +1,11 @@
+server:
+  port: 8002
+spring:
+  application:
+    name: j-cloud-consumer-feign
+
+# eureka \u914D\u7F6E
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://jorian:123456@localhost:8761/eureka

@@ -49,7 +49,12 @@
         </dependency>
     </dependencies>
     <modules>
-
+        <module>j-cloud-server-eureka</module>
+        <module>j-cloud-provider1</module>
+        <module>j-cloud-provider2</module>
+        <module>j-cloud-consumer</module>
+        <module>j-cloud-consumer-feign</module>
+        <module>minalz-cloud-test</module>
     </modules>
 
 
